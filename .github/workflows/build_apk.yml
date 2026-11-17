@@ -22,16 +22,27 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
 
-      - name: Build Release APK
+      - name: Generate Official Android Project & Build
         run: |
+          # 1. Clean previous android directory
           rm -rf android
-          flutter create --org in.rajyodarpan --project-name rajyo_darpan_publisher --platforms=android .
+          
+          # 2. Re-create android platform with official template
+          flutter create --platforms=android --org in.rajyodarpan .
+          
+          # 3. Ensure minSdk is 21 in build.gradle
+          sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
+          sed -i 's/minSdk = .*/minSdk = 21/' android/app/build.gradle || true
+          
+          # 4. Resolve dependencies
           flutter pub get
-          flutter analyze --no-fatal-infos || true
-          flutter build apk --release --verbose
+          
+          # 5. Build Release APK
+          flutter build apk --release
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
