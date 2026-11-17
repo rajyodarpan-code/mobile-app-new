@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import '../constants/api_constants.dart';
-import '../storage/secure_storage_service.dart';
+import 'package:rajyo_darpan_publisher/core/constants/api_constants.dart';
+import 'package:rajyo_darpan_publisher/core/storage/secure_storage_service.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -15,10 +15,7 @@ class ApiException implements Exception {
 
 class ApiClient {
   Future<String> _getBaseUrl() async {
-    final custom = await SecureStorageService.getBaseUrl();
-    if (custom != null && custom.isNotEmpty) {
-      return custom.replaceAll(RegExp(r'/+$'), '');
-    }
+    // Always use the hardcoded defaultBaseUrl (https://admin.rajyodarpan.in)
     return ApiConstants.defaultBaseUrl;
   }
 
@@ -26,6 +23,7 @@ class ApiClient {
     final token = await SecureStorageService.getToken();
     final headers = <String, String>{
       'Accept': 'application/json',
+      'User-Agent': 'RajyoDarpanApp/1.0',
     };
     if (!isMultipart) {
       headers['Content-Type'] = 'application/json';
@@ -47,8 +45,10 @@ class ApiClient {
       final headers = await _getHeaders();
       final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
       return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('ইন্টারনেট সংযোগ নেই। ইন্টারনেট চেক করে আবার চেষ্টা করুন।');
+    } on SocketException catch (e) {
+      throw ApiException('সার্ভারে সংযোগ ব্যর্থ: ${e.message}');
+    } on HandshakeException catch (e) {
+      throw ApiException('SSL সিকিউরিটি হ্যান্ডশেক এরর: ${e.message}');
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('সার্ভারের সাথে যোগাযোগ করা যাচ্ছে না: $e');
@@ -65,8 +65,10 @@ class ApiClient {
           .post(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
           .timeout(const Duration(seconds: 35));
       return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('ইন্টারনেট সংযোগ নেই। ইন্টারনেট চেক করে আবার চেষ্টা করুন।');
+    } on SocketException catch (e) {
+      throw ApiException('সার্ভারে সংযোগ ব্যর্থ ($baseUrl): ${e.message}');
+    } on HandshakeException catch (e) {
+      throw ApiException('SSL হ্যান্ডশেক এরর: ${e.message}');
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('সার্ভার এরর: $e');
@@ -83,8 +85,6 @@ class ApiClient {
           .put(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
           .timeout(const Duration(seconds: 35));
       return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('ইন্টারনেট সংযোগ নেই।');
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('সার্ভার এরর: $e');
@@ -122,8 +122,6 @@ class ApiClient {
       final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
       final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('ইন্টারনেট সংযোগ নেই। ছবি আপলোড করা যায়নি।');
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('ছবি আপলোডে সমস্যা হয়েছে: $e');
