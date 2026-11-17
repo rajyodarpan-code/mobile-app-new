@@ -26,9 +26,9 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install ImageMagick & WebP tools
+      - name: Install ImageMagick
         run: |
-          sudo apt-get update && sudo apt-get install -y imagemagick webp
+          sudo apt-get update && sudo apt-get install -y imagemagick
 
       - name: Build Release APK
         run: |
@@ -41,18 +41,15 @@ jobs:
           cp -r $GITHUB_WORKSPACE/assets rajyo_darpan_publisher/assets
           cp $GITHUB_WORKSPACE/pubspec.yaml rajyo_darpan_publisher/pubspec.yaml
 
-          # Prepare padded adaptive launcher icon (Safe Zone for Android circles/squircles)
-          # First decode webp to png
-          dwebp rajyo_darpan_publisher/assets/images/app_logo.webp -o $RUNNER_TEMP/logo_raw.png
-          # Pad the logo into a 1024x1024 transparent canvas at 68% size (safe zone: ~700px)
-          convert -size 1024x1024 xc:none $RUNNER_TEMP/logo_raw.png -resize 696x696 -gravity center -composite rajyo_darpan_publisher/assets/images/app_logo_foreground.png
+          # Prepare padded adaptive launcher icon (Safe Zone ~64% so the squircle box & glow never get cropped)
+          convert -size 1024x1024 xc:none rajyo_darpan_publisher/assets/images/app_logo.jpg -resize 650x650 -gravity center -composite rajyo_darpan_publisher/assets/images/app_logo_foreground.png
           
           cd rajyo_darpan_publisher
           
           # Update pubspec.yaml launcher icon configuration
-          sed -i "s|image_path: .*|image_path: 'assets/images/app_logo.webp'|" pubspec.yaml
+          sed -i "s|image_path: .*|image_path: 'assets/images/app_logo.jpg'|" pubspec.yaml
           sed -i "s|adaptive_icon_foreground: .*|adaptive_icon_foreground: 'assets/images/app_logo_foreground.png'|" pubspec.yaml
-          sed -i "s|adaptive_icon_background: .*|adaptive_icon_background: '#0a192f'|" pubspec.yaml
+          sed -i "s|adaptive_icon_background: .*|adaptive_icon_background: '#040d1a'|" pubspec.yaml
 
           # Install dependencies exactly from pubspec.yaml
           flutter pub get
