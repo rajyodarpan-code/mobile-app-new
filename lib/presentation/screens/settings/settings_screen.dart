@@ -38,16 +38,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       // 2. WP status
       final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      if (articleProvider.selectedPlatform == null) {
+        await articleProvider.fetchPlatformsAndTaxonomies();
+      }
       final wpPlatform = articleProvider.selectedPlatform;
-      if (wpPlatform != null) {
-        final res = await _apiClient.get(ApiConstants.platformStatus(wpPlatform.id));
-        if (res != null && res['data'] != null && res['data']['connected'] == true) {
-          _wpStatus = 'সংযুক্ত (Connected)';
-        } else {
-          _wpStatus = 'কানেকশন সমস্যা';
-        }
+      final platformId = wpPlatform?.id ?? 1;
+
+      final res = await _apiClient.get(ApiConstants.platformStatus(platformId));
+      if (res != null && res['data'] != null && res['data']['connected'] == true) {
+        _wpStatus = 'সংযুক্ত (Connected)';
       } else {
-        _wpStatus = 'প্লাটফর্ম পাওয়া যায়নি';
+        _wpStatus = 'কানেকশন সমস্যা';
       }
     } catch (_) {
       _wpStatus = 'কানেকশন এরর';
