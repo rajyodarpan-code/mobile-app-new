@@ -36,15 +36,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Brand Header
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryLight,
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: const Icon(
-                      Icons.newspaper_rounded,
-                      size: 48,
-                      color: AppColors.primary,
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/app_logo.webp',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.primaryLight,
+                          child: const Icon(
+                            Icons.newspaper_rounded,
+                            size: 48,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

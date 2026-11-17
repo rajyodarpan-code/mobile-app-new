@@ -38,6 +38,53 @@ class _ArticlesListScreenState extends State<ArticlesListScreen> {
         .fetchArticles(status: filterId, search: _searchController.text);
   }
 
+  void _confirmDeleteArticle(BuildContext context, article) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: AppColors.danger),
+            SizedBox(width: 8),
+            Text('সংবাদ মুছে ফেলা'),
+          ],
+        ),
+        content: Text(
+          'আপনি কি নিশ্চিত যে "${article.title}" সংবাদটি মুছে ফেলতে চান?\n\nএটি প্যানেল থেকে মুছে যাবে এবং ওয়েবসাইট থেকেও স্বয়ংক্রিয়ভাবে ট্র্যাশে (Trash) চলে যাবে।',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('বাতিল'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                final success = await Provider.of<ArticleProvider>(context, listen: false)
+                    .deleteArticle(article.uuid);
+                if (success && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('সংবাদটি সফলভাবে ট্র্যাশে সরানো হয়েছে')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('মুছতে ব্যর্থ হয়েছে: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('মুছে ফেলুন', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final articleProvider = Provider.of<ArticleProvider>(context);
@@ -215,6 +262,13 @@ class _ArticlesListScreenState extends State<ArticlesListScreen> {
                                                 ),
                                               ],
                                             ),
+                                          ),
+
+                                          // Delete Action Button
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline, color: AppColors.textMuted, size: 22),
+                                            tooltip: 'মুছে ফেলুন',
+                                            onPressed: () => _confirmDeleteArticle(context, article),
                                           ),
                                         ],
                                       ),

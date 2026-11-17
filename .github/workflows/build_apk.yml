@@ -31,14 +31,36 @@ jobs:
           cd $RUNNER_TEMP
           flutter create --org in.rajyodarpan --project-name rajyo_darpan_publisher rajyo_darpan_publisher
           
-          # Replace lib directory completely
+          # Replace lib and assets directories completely
           rm -rf rajyo_darpan_publisher/lib
           cp -r $GITHUB_WORKSPACE/lib rajyo_darpan_publisher/lib
+          cp -r $GITHUB_WORKSPACE/assets rajyo_darpan_publisher/assets
           
           cd rajyo_darpan_publisher
           
           # Add dependencies
-          flutter pub add provider:^6.1.2 http:^1.2.2 intl:^0.19.0 flutter_secure_storage:^9.2.2 sqflite:^2.3.3+1 path:^1.9.0 shared_preferences:^2.3.2 image_picker:^1.1.2 google_fonts:^6.2.1
+          flutter pub add provider:^6.1.2 http:^1.2.2 intl:^0.19.0 flutter_secure_storage:^9.2.2 sqflite:^2.3.3+1 path:^1.9.0 shared_preferences:^2.3.2 image_picker:^1.1.2 google_fonts:^6.2.1 flutter_launcher_icons:^0.13.1 --dev
+          
+          # Enable assets and flutter_launcher_icons in pubspec.yaml
+          cat << 'EOF' >> pubspec.yaml
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/images/app_logo.webp"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_logo.webp"
+
+flutter:
+  assets:
+    - assets/images/
+EOF
+
+          # Generate App Icons using flutter_launcher_icons
+          dart run flutter_launcher_icons
+
+          # Ensure AndroidManifest uses the new launcher icon
+          sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@mipmap\/launcher_icon"/g' android/app/src/main/AndroidManifest.xml || true
           
           # Ensure INTERNET and network permissions in AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.INTERNET"\/>\n<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>' android/app/src/main/AndroidManifest.xml

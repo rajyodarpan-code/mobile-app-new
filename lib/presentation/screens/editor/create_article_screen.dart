@@ -246,6 +246,57 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          if (widget.existingArticle != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+              tooltip: 'সংবাদ মুছে ফেলুন',
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Row(
+                      children: [
+                        Icon(Icons.delete_outline, color: AppColors.danger),
+                        SizedBox(width: 8),
+                        Text('সংবাদ মুছে ফেলা'),
+                      ],
+                    ),
+                    content: const Text(
+                      'আপনি কি নিশ্চিত যে এই সংবাদটি মুছে ফেলতে চান?\n\nএটি প্যানেল থেকে মুছে যাবে এবং ওয়েবসাইট থেকেও স্বয়ংক্রিয়ভাবে ট্র্যাশে (Trash) চলে যাবে।',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('বাতিল'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          try {
+                            final success = await Provider.of<ArticleProvider>(context, listen: false)
+                                .deleteArticle(widget.existingArticle!.uuid);
+                            if (success && mounted) {
+                              Navigator.pop(context); // Go back to list
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('সংবাদটি সফলভাবে ট্র্যাশে সরানো হয়েছে')),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('মুছতে ব্যর্থ হয়েছে: $e')),
+                              );
+                            }
+                          }
+                        },
+                        child: const Text('মুছে ফেলুন', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.save_outlined),
             tooltip: 'লোকাল ড্রাফট সংরক্ষণ',

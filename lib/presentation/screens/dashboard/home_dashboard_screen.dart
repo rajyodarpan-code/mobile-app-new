@@ -29,11 +29,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.newspaper_rounded, color: AppColors.primary, size: 24),
-            SizedBox(width: 8),
-            Text('রাজ্য দর্পণ ড্যাশবোর্ড', style: TextStyle(fontWeight: FontWeight.bold)),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/app_logo.webp',
+                width: 28,
+                height: 28,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.newspaper_rounded, color: AppColors.primary, size: 24),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('রাজ্য দর্পণ ড্যাশবোর্ড', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
