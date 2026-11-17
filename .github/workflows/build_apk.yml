@@ -22,9 +22,16 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
           channel: 'stable'
           cache: true
+
+      - name: Recreate Standard Android Skeleton
+        run: |
+          mkdir -p ../temp_flutter
+          cd ../temp_flutter
+          flutter create --org in.rajyodarpan --project-name rajyo_darpan_publisher temp_app
+          cp -r temp_app/android $GITHUB_WORKSPACE/
+          cd $GITHUB_WORKSPACE
 
       - name: Install Dependencies
         run: flutter pub get
