@@ -25,27 +25,15 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Create Official Flutter Android App & Merge Source
+      - name: Build Release APK
         run: |
-          mkdir -p ../clean_project
-          cd ../clean_project
-          flutter create --org in.rajyodarpan --project-name rajyo_darpan_publisher clean_app
-          
-          # Replace lib and pubspec
-          rm -rf clean_app/lib
-          cp -r $GITHUB_WORKSPACE/lib clean_app/
-          cp $GITHUB_WORKSPACE/pubspec.yaml clean_app/
-          
-          cd clean_app
+          # Use flutter create . to generate the android folder in-place
+          flutter create --org in.rajyodarpan --project-name rajyo_darpan_publisher .
           flutter pub get
           flutter build apk --release
-          
-          # Move APK back to workspace
-          mkdir -p $GITHUB_WORKSPACE/output
-          cp build/app/outputs/flutter-apk/app-release.apk $GITHUB_WORKSPACE/output/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: rajyo-darpan-publisher-release-apk
-          path: output/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
