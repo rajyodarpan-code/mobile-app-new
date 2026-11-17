@@ -26,6 +26,10 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Install ImageMagick & WebP tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick webp
+
       - name: Build Release APK
         run: |
           cd $RUNNER_TEMP
@@ -36,14 +40,28 @@ jobs:
           cp -r $GITHUB_WORKSPACE/lib rajyo_darpan_publisher/lib
           cp -r $GITHUB_WORKSPACE/assets rajyo_darpan_publisher/assets
           cp $GITHUB_WORKSPACE/pubspec.yaml rajyo_darpan_publisher/pubspec.yaml
+
+          # Prepare padded adaptive launcher icon (Safe Zone for Android circles/squircles)
+          # First decode webp to png
+          dwebp rajyo_darpan_publisher/assets/images/app_logo.webp -o $RUNNER_TEMP/logo_raw.png
+          # Pad the logo into a 1024x1024 transparent canvas at 68% size (safe zone: ~700px)
+          convert -size 1024x1024 xc:none $RUNNER_TEMP/logo_raw.png -resize 696x696 -gravity center -composite rajyo_darpan_publisher/assets/images/app_logo_foreground.png
           
           cd rajyo_darpan_publisher
           
-          # Install dependencies exactly from clean pubspec.yaml
+          # Update pubspec.yaml launcher icon configuration
+          sed -i "s|image_path: .*|image_path: 'assets/images/app_logo.webp'|" pubspec.yaml
+          sed -i "s|adaptive_icon_foreground: .*|adaptive_icon_foreground: 'assets/images/app_logo_foreground.png'|" pubspec.yaml
+          sed -i "s|adaptive_icon_background: .*|adaptive_icon_background: '#0a192f'|" pubspec.yaml
+
+          # Install dependencies exactly from pubspec.yaml
           flutter pub get
           
-          # Generate Official Launcher Icons from assets/images/app_logo.webp
+          # Generate Official Adaptive & Legacy Launcher Icons
           dart run flutter_launcher_icons
+          
+          # Set App Display Name to "Rajyodarpan Admin" in AndroidManifest.xml
+          sed -i 's/android:label="[^"]*"/android:label="Rajyodarpan Admin"/' android/app/src/main/AndroidManifest.xml
           
           # Ensure INTERNET and network permissions in AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.INTERNET"\/>\n<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>' android/app/src/main/AndroidManifest.xml
