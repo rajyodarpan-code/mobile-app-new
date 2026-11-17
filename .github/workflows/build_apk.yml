@@ -29,18 +29,20 @@ jobs:
       - name: Build Standalone Clean App & Assemble Release APK
         run: |
           cd $RUNNER_TEMP
-          flutter create --org in.rajyodarpan --project-name rajyo_darpan_publisher my_app
+          flutter create --org in.rajyodarpan --project-name rajyo_darpan_publisher rajyo_darpan_publisher
           
           # Replace lib directory completely
-          rm -rf my_app/lib
-          cp -r $GITHUB_WORKSPACE/lib my_app/lib
+          rm -rf rajyo_darpan_publisher/lib
+          cp -r $GITHUB_WORKSPACE/lib rajyo_darpan_publisher/lib
           
-          cd my_app
+          cd rajyo_darpan_publisher
           
           # Add dependencies
           flutter pub add provider:^6.1.2 http:^1.2.2 intl:^0.19.0 flutter_secure_storage:^9.2.2 sqflite:^2.3.3+1 path:^1.9.0 shared_preferences:^2.3.2 image_picker:^1.1.2 google_fonts:^6.2.1
           
-          # Set minSdk to 21
+          # Set compileSdk 35 and minSdk 21 in build.gradle
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle || true
+          sed -i 's/compileSdk = .*/compileSdk = 35/' android/app/build.gradle || true
           sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
           sed -i 's/minSdk = .*/minSdk = 21/' android/app/build.gradle || true
           

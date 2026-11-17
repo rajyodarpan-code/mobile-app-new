@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
+import 'package:rajyo_darpan_publisher/core/constants/app_colors.dart';
 
 class StatusBadge extends StatelessWidget {
   final String status;

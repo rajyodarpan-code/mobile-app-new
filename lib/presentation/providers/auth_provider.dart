@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../../core/network/api_client.dart';
-import '../../core/constants/api_constants.dart';
-import '../../core/storage/secure_storage_service.dart';
-import '../../data/models/user_model.dart';
+import 'package:rajyo_darpan_publisher/core/network/api_client.dart';
+import 'package:rajyo_darpan_publisher/core/constants/api_constants.dart';
+import 'package:rajyo_darpan_publisher/core/storage/secure_storage_service.dart';
+import 'package:rajyo_darpan_publisher/data/models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiClient _apiClient = ApiClient();

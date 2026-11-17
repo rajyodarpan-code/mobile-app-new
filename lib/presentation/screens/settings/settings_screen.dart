@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/network/api_client.dart';
-import '../../core/constants/api_constants.dart';
-import '../providers/auth_provider.dart';
-import '../providers/article_provider.dart';
-import '../widgets/primary_button.dart';
+import 'package:rajyo_darpan_publisher/core/constants/app_colors.dart';
+import 'package:rajyo_darpan_publisher/core/network/api_client.dart';
+import 'package:rajyo_darpan_publisher/core/constants/api_constants.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/auth_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/article_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/widgets/primary_button.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

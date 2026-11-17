@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'core/theme/app_theme.dart';
-import 'core/constants/app_colors.dart';
-import 'presentation/providers/auth_provider.dart';
-import 'presentation/providers/dashboard_provider.dart';
-import 'presentation/providers/article_provider.dart';
-import 'presentation/providers/draft_provider.dart';
-import 'presentation/screens/auth/login_screen.dart';
-import 'presentation/screens/dashboard/home_dashboard_screen.dart';
-import 'presentation/screens/articles/articles_list_screen.dart';
-import 'presentation/screens/editor/create_article_screen.dart';
-import 'presentation/screens/schedule/schedule_screen.dart';
-import 'presentation/screens/settings/settings_screen.dart';
+import 'package:rajyo_darpan_publisher/core/theme/app_theme.dart';
+import 'package:rajyo_darpan_publisher/core/constants/app_colors.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/auth_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/dashboard_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/article_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/draft_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/screens/auth/login_screen.dart';
+import 'package:rajyo_darpan_publisher/presentation/screens/dashboard/home_dashboard_screen.dart';
+import 'package:rajyo_darpan_publisher/presentation/screens/articles/articles_list_screen.dart';
+import 'package:rajyo_darpan_publisher/presentation/screens/editor/create_article_screen.dart';
+import 'package:rajyo_darpan_publisher/presentation/screens/schedule/schedule_screen.dart';
+import 'package:rajyo_darpan_publisher/presentation/screens/settings/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

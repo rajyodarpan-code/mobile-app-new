@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_colors.dart';
-import '../providers/dashboard_provider.dart';
-import '../widgets/status_badge.dart';
-import '../editor/create_article_screen.dart';
+import 'package:rajyo_darpan_publisher/core/constants/app_colors.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/dashboard_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/widgets/status_badge.dart';
+import 'package:rajyo_darpan_publisher/presentation/screens/editor/create_article_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   final Function(int) onNavigateTab;

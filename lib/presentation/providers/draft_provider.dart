@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../../core/storage/local_database.dart';
+import 'package:rajyo_darpan_publisher/core/storage/local_database.dart';
 
 class LocalDraft {
   final int? localId;

@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_colors.dart';
-import '../../data/models/article_model.dart';
-import '../../data/models/category_model.dart';
-import '../providers/article_provider.dart';
-import '../providers/draft_provider.dart';
-import '../widgets/primary_button.dart';
+import 'package:rajyo_darpan_publisher/core/constants/app_colors.dart';
+import 'package:rajyo_darpan_publisher/data/models/article_model.dart';
+import 'package:rajyo_darpan_publisher/data/models/category_model.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/article_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/draft_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/widgets/primary_button.dart';
 
 class CreateArticleScreen extends StatefulWidget {
   final ArticleModel? existingArticle;

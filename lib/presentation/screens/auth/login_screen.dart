@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_colors.dart';
-import '../providers/auth_provider.dart';
-import '../widgets/primary_button.dart';
+import 'package:rajyo_darpan_publisher/core/constants/app_colors.dart';
+import 'package:rajyo_darpan_publisher/presentation/providers/auth_provider.dart';
+import 'package:rajyo_darpan_publisher/presentation/widgets/primary_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

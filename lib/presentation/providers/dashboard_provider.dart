@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/network/api_client.dart';
-import '../../core/constants/api_constants.dart';
-import '../../data/models/article_model.dart';
+import 'package:rajyo_darpan_publisher/core/network/api_client.dart';
+import 'package:rajyo_darpan_publisher/core/constants/api_constants.dart';
+import 'package:rajyo_darpan_publisher/data/models/article_model.dart';
 
 class DashboardProvider with ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
