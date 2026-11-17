@@ -13,9 +13,10 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _otpController = TextEditingController();
   final _urlController = TextEditingController(text: 'https://rajyodarpan.in/admin_rajyo');
-  bool _obscurePassword = true;
+
+  bool _otpSent = false;
   bool _showAdvanced = false;
 
   @override
@@ -35,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Center(
                   child: Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppColors.primaryLight,
                       shape: BoxShape.circle,
                     ),
@@ -57,10 +58,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Rajyo Darpan Publisher App',
+                Text(
+                  _otpSent ? 'আপনার ইমেইলে প্রেরিত ৬ সংখ্যার ওটিপি লিখুন' : 'লগইন করতে আপনার প্যানেলের ইমেইল লিখুন',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
                   ),
@@ -92,9 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // Email
+                // Email Field
                 TextField(
                   controller: _emailController,
+                  enabled: !_otpSent,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     labelText: 'ইমেইল এড্রেস (Email)',
@@ -103,23 +105,43 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Password
-                TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'পাসওয়ার্ড (Password)',
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: AppColors.textMuted,
-                      ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                // OTP Field (Shows after OTP is sent)
+                if (_otpSent) ...[
+                  TextField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 8),
+                    decoration: const InputDecoration(
+                      labelText: '৬-সংখ্যার ওটিপি কোড (OTP)',
+                      hintText: '• • • • • •',
+                      prefixIcon: Icon(Icons.pin_outlined, color: AppColors.textMuted),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () => setState(() => _otpSent = false),
+                        child: const Text('ইমেইল পরিবর্তন করুন'),
+                      ),
+                      TextButton(
+                        onPressed: auth.isLoading
+                            ? null
+                            : () async {
+                                await auth.sendOtp(_emailController.text, customUrl: _urlController.text);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('পুনরায় ওটিপি পাঠানো হয়েছে')),
+                                );
+                              },
+                        child: const Text('পুনরায় ওটিপি পাঠান'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Advanced Server URL
                 InkWell(
@@ -130,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          _showAdvanced ? 'সার্ভার সেটিংস লুকান' : 'সার্ভার সেটিংস পরিবর্তন',
+                          _showAdvanced ? 'সার্ভার সেটিংস লুকান' : 'সার্ভার সেটিংস',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         ),
                         Icon(
@@ -156,28 +178,54 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
 
                 // Submit Button
-                PrimaryButton(
-                  text: 'লগইন করুন',
-                  isLoading: auth.isLoading,
-                  icon: Icons.login_rounded,
-                  onPressed: () async {
-                    if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('ইমেইল ও পাসওয়ার্ড প্রদান করুন')),
-                      );
-                      return;
-                    }
+                if (!_otpSent)
+                  PrimaryButton(
+                    text: 'ওটিপি কোড পাঠান (Send OTP)',
+                    isLoading: auth.isLoading,
+                    icon: Icons.send_rounded,
+                    onPressed: () async {
+                      if (_emailController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('অনুগ্রহ করে আপনার ইমেইল প্রদান করুন')),
+                        );
+                        return;
+                      }
 
-                    await auth.login(
-                      _emailController.text,
-                      _passwordController.text,
-                      customUrl: _urlController.text,
-                    );
-                  },
-                ),
+                      final success = await auth.sendOtp(
+                        _emailController.text,
+                        customUrl: _urlController.text,
+                      );
+                      if (success) {
+                        setState(() => _otpSent = true);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('আপনার ইমেইলে ওটিপি পাঠানো হয়েছে')),
+                        );
+                      }
+                    },
+                  )
+                else
+                  PrimaryButton(
+                    text: 'ওটিপি যাচাই করে লগইন করুন',
+                    isLoading: auth.isLoading,
+                    icon: Icons.login_rounded,
+                    onPressed: () async {
+                      if (_otpController.text.trim().length != 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('সঠিক ৬ সংখ্যার ওটিপি প্রদান করুন')),
+                        );
+                        return;
+                      }
+
+                      await auth.verifyOtp(
+                        _emailController.text,
+                        _otpController.text,
+                      );
+                    },
+                  ),
+
                 const SizedBox(height: 24),
                 const Text(
-                  'ম্যানুয়াল নিউজ পাবলিশিং অ্যাপ • সংস্করণ ১.০.০',
+                  'রাজ্য দর্পণ অফিসিয়াল পাবলিশার • OTP লগইন সিস্টেম',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),

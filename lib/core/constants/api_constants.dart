@@ -5,6 +5,8 @@ class ApiConstants {
 
   // Auth endpoints
   static const String login = '$apiV1Prefix/auth/login';
+  static const String sendOtp = '$apiV1Prefix/auth/send-otp';
+  static const String verifyOtp = '$apiV1Prefix/auth/verify-otp';
   static const String logout = '$apiV1Prefix/auth/logout';
   static const String user = '$apiV1Prefix/auth/user';
   static const String refresh = '$apiV1Prefix/auth/refresh';

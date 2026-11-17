@@ -16,6 +16,69 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   String? get errorMessage => _errorMessage;
 
+  Future<bool> sendOtp(String email, {String? customUrl}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      if (customUrl != null && customUrl.trim().isNotEmpty) {
+        await SecureStorageService.saveBaseUrl(customUrl.trim());
+      }
+
+      await _apiClient.post(
+        ApiConstants.sendOtp,
+        body: {'email': email.trim()},
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtp(String email, String otp) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await _apiClient.post(
+        ApiConstants.verifyOtp,
+        body: {
+          'email': email.trim(),
+          'otp': otp.trim(),
+          'device_name': 'RajyoDarpan_Android_App',
+        },
+      );
+
+      if (res != null && res['data'] != null) {
+        final token = res['data']['token'];
+        final userData = res['data']['user'];
+
+        await SecureStorageService.saveToken(token);
+        _currentUser = UserModel.fromJson(userData);
+        await SecureStorageService.saveUserData(jsonEncode(_currentUser!.toJson()));
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      throw ApiException('ওটিপি যাচাই করা যায়নি।');
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> checkAuthStatus() async {
     final token = await SecureStorageService.getToken();
     if (token == null || token.isEmpty) {
