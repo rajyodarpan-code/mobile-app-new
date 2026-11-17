@@ -1,0 +1,785 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../core/constants/app_colors.dart';
+import '../../data/models/article_model.dart';
+import '../../data/models/category_model.dart';
+import '../providers/article_provider.dart';
+import '../providers/draft_provider.dart';
+import '../widgets/primary_button.dart';
+
+class CreateArticleScreen extends StatefulWidget {
+  final ArticleModel? existingArticle;
+
+  const CreateArticleScreen({super.key, this.existingArticle});
+
+  @override
+  State<CreateArticleScreen> createState() => _CreateArticleScreenState();
+}
+
+class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // Controllers
+  final _titleController = TextEditingController();
+  final _contentController = TextEditingController();
+  final _excerptController = TextEditingController();
+  final _slugController = TextEditingController();
+
+  final _seoTitleController = TextEditingController();
+  final _metaDescriptionController = TextEditingController();
+  final _focusKeywordController = TextEditingController();
+  final _imageAltController = TextEditingController();
+
+  // Categories & Tags
+  String? _selectedCategory;
+  final List<String> _tags = [];
+  final _tagInputController = TextEditingController();
+
+  // Media
+  File? _selectedLocalImage;
+  int? _featuredMediaId;
+  String? _featuredImageUrl;
+  bool _isUploadingImage = false;
+
+  // Publishing flags
+  bool _isBreakingNews = false;
+  bool _isFeaturedNews = false;
+  DateTime? _scheduledDateTime;
+
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ArticleProvider>(context, listen: false).fetchPlatformsAndTaxonomies();
+    });
+
+    if (widget.existingArticle != null) {
+      _populateExistingData(widget.existingArticle!);
+    }
+  }
+
+  void _populateExistingData(ArticleModel a) {
+    _titleController.text = a.title;
+    _contentController.text = a.content ?? '';
+    _excerptController.text = a.excerpt ?? '';
+    _slugController.text = a.slug ?? '';
+
+    _seoTitleController.text = a.seoTitle ?? '';
+    _metaDescriptionController.text = a.metaDescription ?? '';
+    _focusKeywordController.text = a.focusKeyword ?? '';
+    _imageAltController.text = a.imageAlt ?? '';
+
+    _selectedCategory = a.category;
+    _tags.addAll(a.tags);
+
+    if (a.featuredMedia != null) {
+      _featuredMediaId = a.featuredMedia!.id;
+      _featuredImageUrl = a.featuredMedia!.url;
+    }
+  }
+
+  // Image Picker
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
+
+    if (picked != null) {
+      setState(() {
+        _selectedLocalImage = File(picked.path);
+        _isUploadingImage = true;
+      });
+
+      try {
+        final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+        final media = await articleProvider.uploadImage(
+          _selectedLocalImage!,
+          altText: _imageAltController.text,
+        );
+
+        if (media != null) {
+          setState(() {
+            _featuredMediaId = media.id;
+            _featuredImageUrl = media.url;
+            _isUploadingImage = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ছবি সফলভাবে আপলোড হয়েছে')),
+          );
+        }
+      } catch (e) {
+        setState(() => _isUploadingImage = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ছবি আপলোডে ব্যর্থ: $e')),
+        );
+      }
+    }
+  }
+
+  // Auto-save local draft
+  Future<void> _saveLocalDraft() async {
+    final draftProvider = Provider.of<DraftProvider>(context, listen: false);
+    final draft = LocalDraft(
+      serverUuid: widget.existingArticle?.uuid,
+      title: _titleController.text,
+      content: _contentController.text,
+      excerpt: _excerptController.text,
+      slug: _slugController.text,
+      category: _selectedCategory,
+      tags: _tags,
+      seoTitle: _seoTitleController.text,
+      metaDescription: _metaDescriptionController.text,
+      focusKeyword: _focusKeywordController.text,
+      imageAlt: _imageAltController.text,
+      localImagePath: _selectedLocalImage?.path,
+      featuredMediaId: _featuredMediaId,
+      isBreaking: _isBreakingNews,
+      isFeatured: _isFeaturedNews,
+      lastModified: DateTime.now().toIso8601String(),
+    );
+
+    await draftProvider.autoSaveDraft(draft);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('ড্রাফট ডিভাইসে সংরক্ষিত হয়েছে')),
+    );
+  }
+
+  // Final Action: Save Draft or Publish Now
+  Future<void> _handlePublishAction({bool isDraftOnly = false}) async {
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('হেডলাইন বা শিরোনাম আবশ্যক')),
+      );
+      _tabController.animateTo(0);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+
+    try {
+      // 1. Save / Update Article in Laravel backend
+      final savedArticle = await articleProvider.saveOrUpdateArticle(
+        uuid: widget.existingArticle?.uuid,
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        excerpt: _excerptController.text.trim(),
+        slug: _slugController.text.trim().isNotEmpty ? _slugController.text.trim() : null,
+        category: _selectedCategory,
+        tags: _tags,
+        featuredMediaId: _featuredMediaId,
+        seoTitle: _seoTitleController.text.trim(),
+        metaDescription: _metaDescriptionController.text.trim(),
+        focusKeyword: _focusKeywordController.text.trim(),
+        imageAlt: _imageAltController.text.trim(),
+        isBreaking: _isBreakingNews,
+        isFeatured: _isFeaturedNews,
+      );
+
+      if (savedArticle == null) {
+        throw Exception('আর্টিকেল সংরক্ষণ করা যায়নি');
+      }
+
+      // 2. If Publish Now or Schedule
+      if (!isDraftOnly) {
+        await articleProvider.publishArticle(
+          uuid: savedArticle.uuid,
+          scheduleAt: _scheduledDateTime,
+          status: _scheduledDateTime != null ? 'future' : 'publish',
+        );
+      }
+
+      setState(() => _isSubmitting = false);
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                isDraftOnly ? Icons.check_circle : Icons.cloud_done_rounded,
+                color: AppColors.success,
+              ),
+              const SizedBox(width: 8),
+              Text(isDraftOnly ? 'ড্রাফট সংরক্ষিত' : (_scheduledDateTime != null ? 'শিডিউল সম্পন্ন' : 'সফলভাবে প্রকাশিত')),
+            ],
+          ),
+          content: Text(
+            isDraftOnly
+                ? 'আর্টিকেলটি সফলভাবে ড্রাফট হিসেবে জমা হয়েছে।'
+                : (_scheduledDateTime != null
+                    ? 'আর্টিকেলটি নির্ধারিত সময়ে স্বয়ংক্রিয়ভাবে ওয়ার্ডপ্রেসে প্রকাশিত হবে।'
+                    : 'আর্টিকেলটি সফলভাবে ওয়ার্ডপ্রেস ও রাজ্য দর্পণে প্রকাশিত হয়েছে।'),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Back to previous screen
+              },
+              child: const Text('ঠিক আছে'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('সমস্যা দেখা দিয়েছে: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.existingArticle != null ? 'আর্টিকেল সম্পাদনা' : 'নতুন সংবাদ লিখুন',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save_outlined),
+            tooltip: 'লোকাল ড্রাফট সংরক্ষণ',
+            onPressed: _saveLocalDraft,
+          ),
+          TextButton(
+            onPressed: _isSubmitting ? null : () => _handlePublishAction(isDraftOnly: true),
+            child: const Text('ড্রাফট সেভ', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.primary,
+          tabs: const [
+            Tab(text: '১. কনটেন্ট'),
+            Tab(text: '২. এসইও'),
+            Tab(text: '৩. ক্যাটাগরি'),
+            Tab(text: '৪. ছবি'),
+            Tab(text: '৫. পাবলিশ'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildContentTab(),
+          _buildSeoTab(),
+          _buildCategoryTab(),
+          _buildMediaTab(),
+          _buildPublishTab(),
+        ],
+      ),
+    );
+  }
+
+  // STEP 1: Content
+  Widget _buildContentTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Headline
+          TextField(
+            controller: _titleController,
+            maxLines: 2,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(
+              labelText: 'সংবাদের শিরোনাম / হেডলাইন *',
+              hintText: 'এখানে সংবাদের আকর্ষণীয় শিরোনাম লিখুন...',
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Excerpt
+          TextField(
+            controller: _excerptController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'সংক্ষিপ্ত বিবরণ (Excerpt)',
+              hintText: 'সংবাদের ছোট সারসংক্ষেপ...',
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Body (Rich Text Multi-line Editor)
+          const Text(
+            'সংবাদের মূল বিষয়বস্তু (Article Body) *',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                // Toolbar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+                    border: Border(bottom: BorderSide(color: AppColors.border)),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.format_bold, size: 20),
+                        onPressed: () => _wrapSelectedText('<strong>', '</strong>'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.format_italic, size: 20),
+                        onPressed: () => _wrapSelectedText('<em>', '</em>'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.format_list_bulleted, size: 20),
+                        onPressed: () => _wrapSelectedText('<ul>\n<li>', '</li>\n</ul>'),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'শব্দ: ${_contentController.text.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).length}',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                TextField(
+                  controller: _contentController,
+                  maxLines: 15,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'এখানে সংবাদের পূর্ণ বিবরণ লিখুন বা পেস্ট করুন...',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.all(14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Slug
+          TextField(
+            controller: _slugController,
+            decoration: const InputDecoration(
+              labelText: 'ইউআরএল স্লাগ (Slug)',
+              hintText: 'খালি রাখলে স্বয়ংক্রিয় তৈরি হবে',
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          PrimaryButton(
+            text: 'পরবর্তী ধাপ (এসইও)',
+            onPressed: () => _tabController.animateTo(1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _wrapSelectedText(String open, String close) {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+    if (selection.start < 0 || selection.end < 0) return;
+
+    final selected = text.substring(selection.start, selection.end);
+    final newText = text.replaceRange(selection.start, selection.end, '$open$selected$close');
+    _contentController.text = newText;
+  }
+
+  // STEP 2: SEO
+  Widget _buildSeoTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _seoTitleController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: 'SEO Title (সার্চ ইঞ্জিনের জন্য শিরোনাম)',
+              suffixText: '${_seoTitleController.text.length}/60',
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _metaDescriptionController,
+            maxLines: 3,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: 'Meta Description (মেটা বিবরণী)',
+              suffixText: '${_metaDescriptionController.text.length}/160',
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _focusKeywordController,
+            decoration: const InputDecoration(
+              labelText: 'Focus Keyword (প্রধান কী-ওয়ার্ড)',
+              hintText: 'যেমন: কলকাতা, নির্বাচন, রাজনীতি',
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _imageAltController,
+            decoration: const InputDecoration(
+              labelText: 'Image ALT Text (ছবির বিকল্প টেক্সট)',
+              hintText: 'ছবির প্রাসঙ্গিক বিবরণ...',
+            ),
+          ),
+          const SizedBox(height: 24),
+          PrimaryButton(
+            text: 'পরবর্তী ধাপ (ক্যাটাগরি ও ট্যাগ)',
+            onPressed: () => _tabController.animateTo(2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // STEP 3: Categories & Tags
+  Widget _buildCategoryTab() {
+    final articleProvider = Provider.of<ArticleProvider>(context);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'সংবাদের ক্যাটাগরি নির্বাচন করুন *',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+
+          // Dropdown for WP categories
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: _selectedCategory,
+                hint: const Text('ক্যাটাগরি সিলেক্ট করুন'),
+                items: articleProvider.categories.map((c) {
+                  return DropdownMenuItem<String>(
+                    value: c.name,
+                    child: Text(c.name),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => _selectedCategory = val),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          const Text(
+            'ট্যাগসমূহ (Tags)',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _tagInputController,
+                  decoration: const InputDecoration(
+                    hintText: 'ট্যাগ লিখুন...',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  onSubmitted: (_) => _addTag(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _addTag,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(60, 48),
+                ),
+                child: const Icon(Icons.add),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Tag chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _tags.map((tag) {
+              return Chip(
+                label: Text(tag),
+                backgroundColor: AppColors.primaryLight,
+                deleteIconColor: AppColors.primary,
+                onDeleted: () => setState(() => _tags.remove(tag)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+
+          PrimaryButton(
+            text: 'পরবর্তী ধাপ (ফিচার্ড ছবি)',
+            onPressed: () => _tabController.animateTo(3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addTag() {
+    final t = _tagInputController.text.trim();
+    if (t.isNotEmpty && !_tags.contains(t)) {
+      setState(() {
+        _tags.add(t);
+        _tagInputController.clear();
+      });
+    }
+  }
+
+  // STEP 4: Featured Image
+  Widget _buildMediaTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'ফিচার্ড ইমেজ (Featured Image)',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 12),
+
+          // Image Preview Container
+          Container(
+            height: 220,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: _isUploadingImage
+                ? const Center(child: CircularProgressIndicator())
+                : _featuredImageUrl != null
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(_featuredImageUrl!, fit: BoxFit.cover),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.black54,
+                              child: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.white, size: 20),
+                                onPressed: () {
+                                  setState(() {
+                                    _featuredMediaId = null;
+                                    _featuredImageUrl = null;
+                                    _selectedLocalImage = null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate_outlined, size: 56, color: AppColors.textMuted),
+                            const SizedBox(height: 8),
+                            const Text('এখনো কোনো ছবি যুক্ত করা হয়নি', style: TextStyle(color: AppColors.textMuted)),
+                          ],
+                        ),
+                      ),
+          ),
+          const SizedBox(height: 16),
+
+          // Upload Options
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickImage(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('গ্যালারি থেকে নিন'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickImage(ImageSource.camera),
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('ক্যামেরা দিয়ে তুলুন'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          PrimaryButton(
+            text: 'পরবর্তী ধাপ (পাবলিশিং সেটিংস)',
+            onPressed: () => _tabController.animateTo(4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // STEP 5: Publishing Settings
+  Widget _buildPublishTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Custom Rajyo Flags
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('ব্রেকিং নিউজ (Breaking News)'),
+                    subtitle: const Text('ওয়েবসাইটের ব্রেকিং হেডলাইনে প্রদর্শন করুন'),
+                    value: _isBreakingNews,
+                    activeColor: AppColors.primary,
+                    onChanged: (val) => setState(() => _isBreakingNews = val),
+                  ),
+                  const Divider(),
+                  SwitchListTile(
+                    title: const Text('ফিচার্ড পোস্ট (Homepage Hero)'),
+                    subtitle: const Text('হোমপেজের প্রধান ব্যানারে প্রদর্শন করুন'),
+                    value: _isFeaturedNews,
+                    activeColor: AppColors.primary,
+                    onChanged: (val) => setState(() => _isFeaturedNews = val),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Schedule Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('শিডিউল প্রকাশনা (Schedule For Later)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  if (_scheduledDateTime != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.infoLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.schedule, color: AppColors.info),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'নির্ধারিত সময়: ${DateFormat('dd MMM yyyy, hh:mm a').format(_scheduledDateTime!)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.info),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: AppColors.info),
+                            onPressed: () => setState(() => _scheduledDateTime = null),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: _selectScheduleDateTime,
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(_scheduledDateTime == null ? 'তারিখ ও সময় নির্ধারণ করুন' : 'সময় পরিবর্তন করুন'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Action Buttons
+          PrimaryButton(
+            text: _scheduledDateTime != null ? 'শিডিউল পাবলিশ করুন' : 'এখনই প্রকাশ করুন (Publish Now)',
+            isLoading: _isSubmitting,
+            icon: Icons.rocket_launch,
+            onPressed: () => _handlePublishAction(isDraftOnly: false),
+          ),
+          const SizedBox(height: 12),
+          PrimaryButton(
+            text: 'ড্রাফট হিসেবে রাখুন (Save Draft)',
+            isOutlined: true,
+            isLoading: _isSubmitting,
+            onPressed: () => _handlePublishAction(isDraftOnly: true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectScheduleDateTime() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(hours: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (pickedDate != null && mounted) {
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 1))),
+      );
+
+      if (pickedTime != null) {
+        setState(() {
+          _scheduledDateTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+        });
+      }
+    }
+  }
+}
