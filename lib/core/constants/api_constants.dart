@@ -1,6 +1,6 @@
 class ApiConstants {
-  // Base URLs
-  static const String defaultBaseUrl = 'https://rajyodarpan.in/admin_rajyo';
+  // Correct Live Production Base URL
+  static const String defaultBaseUrl = 'https://admin.rajyodarpan.in';
   static const String apiV1Prefix = '/api/v1';
 
   // Auth endpoints
