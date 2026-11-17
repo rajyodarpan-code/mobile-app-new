@@ -28,20 +28,16 @@ jobs:
 
       - name: Generate Official Android Project & Build
         run: |
-          # 1. Clean previous android directory
           rm -rf android
           
-          # 2. Re-create android platform with official template
-          flutter create --platforms=android --org in.rajyodarpan .
+          # Pass explicit project name so it doesn't take the repo folder name with dashes
+          flutter create --platforms=android --org in.rajyodarpan --project-name rajyo_darpan_publisher .
           
-          # 3. Ensure minSdk is 21 in build.gradle
+          # Set minSdk to 21
           sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
           sed -i 's/minSdk = .*/minSdk = 21/' android/app/build.gradle || true
           
-          # 4. Resolve dependencies
           flutter pub get
-          
-          # 5. Build Release APK
           flutter build apk --release
 
       - name: Upload APK Artifact
