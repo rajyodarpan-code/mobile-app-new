@@ -255,6 +255,10 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✦ মূল খবর বজায় রেখে বাকি সব পেজ AI দিয়ে তৈরি হয়েছে')),
         );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI রেসপন্স পাওয়া যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।')),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
