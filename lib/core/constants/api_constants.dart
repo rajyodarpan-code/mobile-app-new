@@ -25,6 +25,10 @@ class ApiConstants {
   // Media endpoints
   static const String mediaUpload = '$apiV1Prefix/media/upload';
 
+  // AI Generation endpoints
+  static const String aiQuickGenerate = '$apiV1Prefix/ai/quick-generate';
+  static String aiGenerate(String uuid) => '$apiV1Prefix/articles/$uuid/ai/generate';
+
   // Platform endpoints
   static const String platforms = '$apiV1Prefix/platforms';
   static String platformCategories(dynamic platformId) => '$apiV1Prefix/platforms/$platformId/categories';

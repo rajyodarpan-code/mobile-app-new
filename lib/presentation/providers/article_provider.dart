@@ -221,6 +221,35 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>?> generateAIContent({
+    required String type,
+    required String content,
+    String? uuid,
+  }) async {
+    try {
+      final body = {
+        'type': type,
+        'content': content,
+        'platform': 'wordpress',
+        'language': 'bn',
+      };
+
+      dynamic res;
+      if (uuid != null && uuid.isNotEmpty) {
+        res = await _apiClient.post(ApiConstants.aiGenerate(uuid), body: body);
+      } else {
+        res = await _apiClient.post(ApiConstants.aiQuickGenerate, body: body);
+      }
+
+      if (res != null && res['data'] != null && res['data']['structured_output'] != null) {
+        return Map<String, dynamic>.from(res['data']['structured_output']);
+      }
+    } catch (e) {
+      rethrow;
+    }
+    return null;
+  }
+
   Future<bool> deleteArticle(String uuid) async {
     try {
       await _apiClient.delete(ApiConstants.articleDetail(uuid));

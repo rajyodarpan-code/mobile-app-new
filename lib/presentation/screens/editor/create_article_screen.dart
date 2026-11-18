@@ -23,6 +23,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
   late TabController _tabController;
 
   // Controllers
+  final _sourceNewsController = TextEditingController();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _excerptController = TextEditingController();
@@ -33,6 +34,12 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
   final _focusKeywordController = TextEditingController();
   final _imageAltController = TextEditingController();
   final _imageCaptionController = TextEditingController();
+
+  // AI Loading states
+  bool _isAiGeneratingAll = false;
+  bool _isAiGeneratingContent = false;
+  bool _isAiGeneratingSeo = false;
+  bool _isAiGeneratingImage = false;
 
   // Categories & Tags
   String? _selectedCategory;
@@ -121,6 +128,271 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
           SnackBar(content: Text('ছবি আপলোডে ব্যর্থ: $e')),
         );
       }
+    }
+  }
+
+  // Determine primary content to feed AI (Article Body first, fallback to Source News)
+  String? _getEffectiveAiContent() {
+    final body = _contentController.text.trim();
+    if (body.isNotEmpty) return body;
+    final source = _sourceNewsController.text.trim();
+    if (source.isNotEmpty) return source;
+    return null;
+  }
+
+  // AI 1: Generate Everything from Source News (updates Article Body + all pages)
+  Future<void> _handleAiGenerateEverything() async {
+    final source = _sourceNewsController.text.trim();
+    if (source.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('অনুগ্রহ করে প্রথমে সোর্স খবরের বক্সে লেখা পেস্ট করুন')),
+      );
+      return;
+    }
+
+    setState(() => _isAiGeneratingAll = true);
+    try {
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final output = await articleProvider.generateAIContent(
+        type: 'rewrite',
+        content: source,
+        uuid: widget.existingArticle?.uuid,
+      );
+
+      if (output != null) {
+        setState(() {
+          if (output['title'] != null || output['seo_headline'] != null) {
+            _titleController.text = (output['title'] ?? output['seo_headline']).toString();
+          }
+          if (output['content'] != null || output['article'] != null) {
+            _contentController.text = (output['content'] ?? output['article']).toString();
+          }
+          if (output['excerpt'] != null) {
+            _excerptController.text = output['excerpt'].toString();
+          }
+          if (output['seo_title'] != null) {
+            _seoTitleController.text = output['seo_title'].toString();
+          }
+          if (output['meta_description'] != null) {
+            _metaDescriptionController.text = output['meta_description'].toString();
+          }
+          if (output['focus_keyword'] != null) {
+            _focusKeywordController.text = output['focus_keyword'].toString();
+          }
+          if (output['slug'] != null) {
+            _slugController.text = output['slug'].toString();
+          }
+          if (output['image_alt'] != null) {
+            _imageAltController.text = output['image_alt'].toString();
+          }
+          if (output['image_caption'] != null) {
+            _imageCaptionController.text = output['image_caption'].toString();
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✦ AI দিয়ে সমস্ত পেজের তথ্য সফলভাবে তৈরি হয়েছে')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI তৈরিতে সমস্যা হয়েছে: $e')),
+      );
+    } finally {
+      setState(() => _isAiGeneratingAll = false);
+    }
+  }
+
+  // AI 2: Generate for All based on Article Body (Article Body text stays intact!)
+  Future<void> _handleAiGenerateForAllFromArticleBody() async {
+    final effectiveContent = _getEffectiveAiContent();
+    if (effectiveContent == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('অনুগ্রহ করে আর্টিকেলের বডিতে কিছু টেক্সট লিখুন বা সোর্স টেক্সট দিন')),
+      );
+      return;
+    }
+
+    setState(() => _isAiGeneratingAll = true);
+    try {
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final output = await articleProvider.generateAIContent(
+        type: 'rewrite',
+        content: effectiveContent,
+        uuid: widget.existingArticle?.uuid,
+      );
+
+      if (output != null) {
+        setState(() {
+          // Notice: _contentController.text is NOT overwritten! It stays intact.
+          if (output['title'] != null || output['seo_headline'] != null) {
+            _titleController.text = (output['title'] ?? output['seo_headline']).toString();
+          }
+          if (output['excerpt'] != null) {
+            _excerptController.text = output['excerpt'].toString();
+          }
+          if (output['seo_title'] != null) {
+            _seoTitleController.text = output['seo_title'].toString();
+          }
+          if (output['meta_description'] != null) {
+            _metaDescriptionController.text = output['meta_description'].toString();
+          }
+          if (output['focus_keyword'] != null) {
+            _focusKeywordController.text = output['focus_keyword'].toString();
+          }
+          if (output['slug'] != null) {
+            _slugController.text = output['slug'].toString();
+          }
+          if (output['image_alt'] != null) {
+            _imageAltController.text = output['image_alt'].toString();
+          }
+          if (output['image_caption'] != null) {
+            _imageCaptionController.text = output['image_caption'].toString();
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✦ মূল খবর বজায় রেখে বাকি সব পেজ AI দিয়ে তৈরি হয়েছে')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI তৈরিতে সমস্যা হয়েছে: $e')),
+      );
+    } finally {
+      setState(() => _isAiGeneratingAll = false);
+    }
+  }
+
+  // AI 3: Generate for Content Page only (Headline + Excerpt only)
+  Future<void> _handleAiGenerateContentPageOnly() async {
+    final effectiveContent = _getEffectiveAiContent();
+    if (effectiveContent == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('অনুগ্রহ করে আর্টিকেলের বডিতে খবর লিখুন বা সোর্স টেক্সট দিন')),
+      );
+      return;
+    }
+
+    setState(() => _isAiGeneratingContent = true);
+    try {
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final output = await articleProvider.generateAIContent(
+        type: 'rewrite',
+        content: effectiveContent,
+        uuid: widget.existingArticle?.uuid,
+      );
+
+      if (output != null) {
+        setState(() {
+          if (output['title'] != null || output['seo_headline'] != null) {
+            _titleController.text = (output['title'] ?? output['seo_headline']).toString();
+          }
+          if (output['excerpt'] != null) {
+            _excerptController.text = output['excerpt'].toString();
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✦ শিরোনাম ও এক্সার্পট সফলভাবে AI দিয়ে তৈরি হয়েছে')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI তৈরিতে সমস্যা হয়েছে: $e')),
+      );
+    } finally {
+      setState(() => _isAiGeneratingContent = false);
+    }
+  }
+
+  // AI 4: Generate for SEO Page only (SEO Title, Meta Desc, Focus Keyword, Slug)
+  Future<void> _handleAiGenerateSeoPageOnly() async {
+    final effectiveContent = _getEffectiveAiContent();
+    if (effectiveContent == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('অনুগ্রহ করে কনটেন্ট পেজে খবর লিখুন বা সোর্স টেক্সট দিন')),
+      );
+      return;
+    }
+
+    setState(() => _isAiGeneratingSeo = true);
+    try {
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final output = await articleProvider.generateAIContent(
+        type: 'seo',
+        content: effectiveContent,
+        uuid: widget.existingArticle?.uuid,
+      );
+
+      if (output != null) {
+        setState(() {
+          if (output['seo_title'] != null) {
+            _seoTitleController.text = output['seo_title'].toString();
+          }
+          if (output['meta_description'] != null) {
+            _metaDescriptionController.text = output['meta_description'].toString();
+          }
+          if (output['focus_keyword'] != null) {
+            _focusKeywordController.text = output['focus_keyword'].toString();
+          }
+          if (output['slug'] != null) {
+            _slugController.text = output['slug'].toString();
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✦ এসইও পেজের সমস্ত তথ্য সফলভাবে AI দিয়ে তৈরি হয়েছে')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('SEO তৈরিতে সমস্যা হয়েছে: $e')),
+      );
+    } finally {
+      setState(() => _isAiGeneratingSeo = false);
+    }
+  }
+
+  // AI 5: Generate for Image Page only (Image Alt Text + Caption)
+  Future<void> _handleAiGenerateImagePageOnly() async {
+    final effectiveContent = _getEffectiveAiContent();
+    if (effectiveContent == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('অনুগ্রহ করে কনটেন্ট পেজে খবর লিখুন বা সোর্স টেক্সট দিন')),
+      );
+      return;
+    }
+
+    setState(() => _isAiGeneratingImage = true);
+    try {
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final output = await articleProvider.generateAIContent(
+        type: 'rewrite',
+        content: effectiveContent,
+        uuid: widget.existingArticle?.uuid,
+      );
+
+      if (output != null) {
+        setState(() {
+          if (output['image_alt'] != null) {
+            _imageAltController.text = output['image_alt'].toString();
+          }
+          if (output['image_caption'] != null) {
+            _imageCaptionController.text = output['image_caption'].toString();
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✦ ছবির অল্টারনেটিভ টেক্সট ও ক্যাপশন AI দিয়ে তৈরি হয়েছে')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ছবির বিবরণ তৈরিতে সমস্যা হয়েছে: $e')),
+      );
+    } finally {
+      setState(() => _isAiGeneratingImage = false);
     }
   }
 
@@ -346,6 +618,82 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // 1. Source News Box
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.feed_outlined, size: 20, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'সোর্স খবর / প্রেস রিলিজ (Source News)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    if (_sourceNewsController.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 18, color: AppColors.textMuted),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'মুছে ফেলুন',
+                        onPressed: () => setState(() => _sourceNewsController.clear()),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _sourceNewsController,
+                  maxLines: 4,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'এখানে যে কোনো সোর্স খবর, প্রেস রিলিজ বা রেফারেন্স টেক্সট পেস্ট করুন...',
+                    hintStyle: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                    fillColor: Colors.white,
+                    filled: true,
+                    border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFCBD5E1))),
+                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFCBD5E1))),
+                    contentPadding: EdgeInsets.all(12),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Button: Generate Everything
+                SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: _isAiGeneratingAll ? null : _handleAiGenerateEverything,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED), // vibrant purple for master AI action
+                      foregroundColor: Colors.white,
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: _isAiGeneratingAll
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.auto_awesome, size: 18),
+                    label: Text(
+                      _isAiGeneratingAll ? 'AI দিয়ে তৈরি হচ্ছে...' : '✦ Generate Everything (সমস্ত পেজ একসাথে লিখুন)',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // Headline
           TextField(
             controller: _titleController,
@@ -428,6 +776,62 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
               ],
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Buttons below Article Body:
+          // 1. Generate for All (Body unchanged)
+          // 2. Generate for This Page Only
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isAiGeneratingAll ? null : _handleAiGenerateForAllFromArticleBody,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6D28D9),
+                    side: const BorderSide(color: Color(0xFF8B5CF6)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: _isAiGeneratingAll
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome_motion_outlined, size: 16),
+                  label: const Text(
+                    '✦ Generate for All\n(বডি অপরিবর্তিত থাকবে)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isAiGeneratingContent ? null : _handleAiGenerateContentPageOnly,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: _isAiGeneratingContent
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 16),
+                  label: const Text(
+                    '✦ Generate for\nThis Page Only',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
 
           PrimaryButton(
@@ -456,6 +860,28 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // AI Button for SEO Page only
+          OutlinedButton.icon(
+            onPressed: _isAiGeneratingSeo ? null : _handleAiGenerateSeoPageOnly,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            icon: _isAiGeneratingSeo
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome, size: 16),
+            label: Text(
+              _isAiGeneratingSeo ? 'SEO তথ্য তৈরি হচ্ছে...' : '✦ Generate for This Page Only (SEO Title, Meta & Slug)',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: _seoTitleController,
             onChanged: (_) => setState(() {}),
@@ -691,6 +1117,38 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
             ],
           ),
           const SizedBox(height: 20),
+
+          // WordPress Image Alt Text & Caption Header & AI Button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'ওয়ার্ডপ্রেস ছবির তথ্য',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              OutlinedButton.icon(
+                onPressed: _isAiGeneratingImage ? null : _handleAiGenerateImagePageOnly,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: _isAiGeneratingImage
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome, size: 14),
+                label: Text(
+                  _isAiGeneratingImage ? 'তৈরি হচ্ছে...' : '✦ Generate for This Page',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
           // WordPress Image Alt Text & Caption
           TextField(
