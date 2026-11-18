@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -354,12 +355,12 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
     }
   }
 
-  // AI 5: Generate for Image Page only (Image Alt Text + Caption)
+  // AI 5: Generate for Image Page only (Image Alt Text + Caption using Vision AI if image exists)
   Future<void> _handleAiGenerateImagePageOnly() async {
     final effectiveContent = _getEffectiveAiContent();
-    if (effectiveContent == null) {
+    if (effectiveContent == null && _selectedLocalImage == null && _featuredImageUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('অনুগ্রহ করে কনটেন্ট পেজে খবর লিখুন বা সোর্স টেক্সট দিন')),
+        const SnackBar(content: Text('অনুগ্রহ করে ছবি সিলেক্ট করুন বা কনটেন্ট পেজে খবর লিখুন')),
       );
       return;
     }
@@ -367,10 +368,27 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
     setState(() => _isAiGeneratingImage = true);
     try {
       final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+
+      String? imageBase64;
+      String? imageMimeType;
+      String? imageUrl;
+
+      if (_selectedLocalImage != null) {
+        final bytes = await _selectedLocalImage!.readAsBytes();
+        imageBase64 = base64Encode(bytes);
+        final ext = _selectedLocalImage!.path.split('.').last.toLowerCase();
+        imageMimeType = ext == 'png' ? 'image/png' : (ext == 'webp' ? 'image/webp' : 'image/jpeg');
+      } else if (_featuredImageUrl != null && _featuredImageUrl!.startsWith('http')) {
+        imageUrl = _featuredImageUrl;
+      }
+
       final output = await articleProvider.generateAIContent(
         type: 'image',
-        content: effectiveContent,
+        content: effectiveContent ?? 'এই ছবির জন্য সংবাদপত্রের উপযোগী অল্ট টেক্সট ও ক্যাপশন তৈরি করুন।',
         uuid: widget.existingArticle?.uuid,
+        imageBase64: imageBase64,
+        imageMimeType: imageMimeType,
+        imageUrl: imageUrl,
       );
 
       if (output != null) {
@@ -384,7 +402,13 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✦ ছবির অল্টারনেটিভ টেক্সট ও ক্যাপশন AI দিয়ে তৈরি হয়েছে')),
+          SnackBar(
+            content: Text(
+              imageBase64 != null || imageUrl != null
+                  ? '✦ Vision AI দিয়ে ছবি বিশ্লেষণ করে অল্ট টেক্সট ও ক্যাপশন তৈরি হয়েছে'
+                  : '✦ ছবির অল্টারনেটিভ টেক্সট ও ক্যাপশন AI দিয়ে তৈরি হয়েছে',
+            ),
+          ),
         );
       }
     } catch (e) {

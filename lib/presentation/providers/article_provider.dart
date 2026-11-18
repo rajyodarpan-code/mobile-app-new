@@ -225,14 +225,24 @@ class ArticleProvider with ChangeNotifier {
     required String type,
     required String content,
     String? uuid,
+    String? imageBase64,
+    String? imageMimeType,
+    String? imageUrl,
   }) async {
     try {
-      final body = {
+      final body = <String, dynamic>{
         'type': type,
         'content': content,
         'platform': 'wordpress',
         'language': 'bn',
       };
+
+      if (imageBase64 != null) {
+        body['image_base64'] = imageBase64;
+        body['image_mime_type'] = imageMimeType ?? 'image/jpeg';
+      } else if (imageUrl != null) {
+        body['image_url'] = imageUrl;
+      }
 
       dynamic res;
       if (uuid != null && uuid.isNotEmpty) {
