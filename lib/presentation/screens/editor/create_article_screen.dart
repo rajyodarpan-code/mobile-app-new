@@ -368,7 +368,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
     try {
       final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
       final output = await articleProvider.generateAIContent(
-        type: 'rewrite',
+        type: 'image',
         content: effectiveContent,
         uuid: widget.existingArticle?.uuid,
       );
