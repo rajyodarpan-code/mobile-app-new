@@ -127,6 +127,7 @@ class ArticleProvider with ChangeNotifier {
     String? metaDescription,
     String? focusKeyword,
     String? imageAlt,
+    String? imageCaption,
     bool isBreaking = false,
     bool isFeatured = false,
   }) async {
@@ -145,15 +146,21 @@ class ArticleProvider with ChangeNotifier {
       'workflow_type': 'manual',
     };
 
-    // Platform specific flags (Rajyo Darpan Theme specific)
-    if (_selectedPlatform != null && _selectedPlatform!.platform == 'wordpress') {
-      body['platform_content'] = {
-        'wordpress': {
-          'is_breaking_news': isBreaking ? '1' : '0',
-          'is_homepage_hero': isFeatured ? '1' : '0',
-        }
-      };
+    // Platform specific flags & metadata (WordPress specific)
+    final wpData = <String, dynamic>{
+      'is_breaking_news': isBreaking ? '1' : '0',
+      'is_homepage_hero': isFeatured ? '1' : '0',
+    };
+    if (imageAlt != null && imageAlt.isNotEmpty) {
+      wpData['image_alt'] = imageAlt;
     }
+    if (imageCaption != null && imageCaption.isNotEmpty) {
+      wpData['image_caption'] = imageCaption;
+    }
+
+    body['platform_content'] = {
+      'wordpress': wpData,
+    };
 
     try {
       dynamic res;

@@ -32,6 +32,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
   final _metaDescriptionController = TextEditingController();
   final _focusKeywordController = TextEditingController();
   final _imageAltController = TextEditingController();
+  final _imageCaptionController = TextEditingController();
 
   // Categories & Tags
   String? _selectedCategory;
@@ -75,6 +76,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
     _metaDescriptionController.text = a.metaDescription ?? '';
     _focusKeywordController.text = a.focusKeyword ?? '';
     _imageAltController.text = a.imageAlt ?? '';
+    _imageCaptionController.text = a.imageCaption ?? '';
 
     _selectedCategory = a.category;
     _tags.addAll(a.tags);
@@ -137,6 +139,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
       metaDescription: _metaDescriptionController.text,
       focusKeyword: _focusKeywordController.text,
       imageAlt: _imageAltController.text,
+      imageCaption: _imageCaptionController.text,
       localImagePath: _selectedLocalImage?.path,
       featuredMediaId: _featuredMediaId,
       isBreaking: _isBreakingNews,
@@ -178,6 +181,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
         metaDescription: _metaDescriptionController.text.trim(),
         focusKeyword: _focusKeywordController.text.trim(),
         imageAlt: _imageAltController.text.trim(),
+        imageCaption: _imageCaptionController.text.trim(),
         isBreaking: _isBreakingNews,
         isFeatured: _isFeaturedNews,
       );
@@ -424,16 +428,6 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
               ],
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Slug
-          TextField(
-            controller: _slugController,
-            decoration: const InputDecoration(
-              labelText: 'ইউআরএল স্লাগ (Slug)',
-              hintText: 'খালি রাখলে স্বয়ংক্রিয় তৈরি হবে',
-            ),
-          ),
           const SizedBox(height: 24),
 
           PrimaryButton(
@@ -489,11 +483,12 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
             ),
           ),
           const SizedBox(height: 16),
+          // Slug
           TextField(
-            controller: _imageAltController,
+            controller: _slugController,
             decoration: const InputDecoration(
-              labelText: 'Image ALT Text (ছবির বিকল্প টেক্সট)',
-              hintText: 'ছবির প্রাসঙ্গিক বিবরণ...',
+              labelText: 'ইউআরএল স্লাগ (URL Slug)',
+              hintText: 'ইংরেজি বা বাংলায় স্লাগ (খালি রাখলে স্বয়ংক্রিয় তৈরি হবে)',
             ),
           ),
           const SizedBox(height: 24),
@@ -694,6 +689,28 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> with SingleTi
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 20),
+
+          // WordPress Image Alt Text & Caption
+          TextField(
+            controller: _imageAltController,
+            decoration: const InputDecoration(
+              labelText: 'ছবির অল্টারনেটিভ টেক্সট (Image Alt Text)',
+              hintText: 'গুগল এসইওর জন্য ছবির বিবরণ লিখুন...',
+              prefixIcon: Icon(Icons.description_outlined),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          TextField(
+            controller: _imageCaptionController,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'ছবির ক্যাপশন (Image Caption)',
+              hintText: 'ওয়েবসাইটে ছবির নিচে প্রদর্শিত হবে (যেমন: ফাইল চিত্র / সংগৃহীত ছবি)...',
+              prefixIcon: Icon(Icons.subtitles_outlined),
+            ),
           ),
           const SizedBox(height: 24),
 

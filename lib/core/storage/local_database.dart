@@ -16,7 +16,12 @@ class LocalDatabase {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE local_drafts ADD COLUMN image_caption TEXT');
+        }
+      },
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE local_drafts (
@@ -32,6 +37,7 @@ class LocalDatabase {
             meta_description TEXT,
             focus_keyword TEXT,
             image_alt TEXT,
+            image_caption TEXT,
             local_image_path TEXT,
             featured_media_id INTEGER,
             is_breaking INTEGER DEFAULT 0,

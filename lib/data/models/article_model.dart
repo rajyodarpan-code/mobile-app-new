@@ -29,6 +29,7 @@ class ArticleModel {
   final String? metaDescription;
   final String? focusKeyword;
   final String? imageAlt;
+  final String? imageCaption;
   final MediaModel? featuredMedia;
   final String? publishedAt;
   final String? updatedAt;
@@ -47,6 +48,7 @@ class ArticleModel {
     this.metaDescription,
     this.focusKeyword,
     this.imageAlt,
+    this.imageCaption,
     this.featuredMedia,
     this.publishedAt,
     this.updatedAt,
@@ -76,6 +78,7 @@ class ArticleModel {
       metaDescription: seo['meta_description'] ?? json['meta_description'],
       focusKeyword: seo['focus_keyword'] ?? json['focus_keyword'],
       imageAlt: json['image_alt'],
+      imageCaption: json['image_caption'] ?? (json['platform_content']?['wordpress']?['image_caption']),
       featuredMedia: json['featured_media'] != null
           ? MediaModel.fromJson(json['featured_media'])
           : null,

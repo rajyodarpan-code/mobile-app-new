@@ -15,6 +15,7 @@ class LocalDraft {
   final String? metaDescription;
   final String? focusKeyword;
   final String? imageAlt;
+  final String? imageCaption;
   final String? localImagePath;
   final int? featuredMediaId;
   final bool isBreaking;
@@ -35,6 +36,7 @@ class LocalDraft {
     this.metaDescription,
     this.focusKeyword,
     this.imageAlt,
+    this.imageCaption,
     this.localImagePath,
     this.featuredMediaId,
     this.isBreaking = false,
@@ -57,6 +59,7 @@ class LocalDraft {
       'meta_description': metaDescription,
       'focus_keyword': focusKeyword,
       'image_alt': imageAlt,
+      'image_caption': imageCaption,
       'local_image_path': localImagePath,
       'featured_media_id': featuredMediaId,
       'is_breaking': isBreaking ? 1 : 0,
@@ -87,6 +90,7 @@ class LocalDraft {
       metaDescription: map['meta_description'],
       focusKeyword: map['focus_keyword'],
       imageAlt: map['image_alt'],
+      imageCaption: map['image_caption'],
       localImagePath: map['local_image_path'],
       featuredMediaId: map['featured_media_id'],
       isBreaking: map['is_breaking'] == 1,
